@@ -4,11 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  performance:
+  build:
     strategy:
+      fail-fast: false
       matrix:
         os: ['macos-13', 'macos-13-xlarge', 'macos-14-large', 'macos-14-xlarge', 'macos-15-large', 'macos-15']
+        
     runs-on: ${{ matrix.os }}
+    
     steps:
     - name: Install fio and iostat
       run: |
