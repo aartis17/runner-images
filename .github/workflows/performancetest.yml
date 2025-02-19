@@ -1,0 +1,58 @@
+name: macOS Performance threshold
+
+on:
+  workflow_dispatch:
+
+jobs:
+  performance:
+    strategy:
+      matrix:
+        os: [macos-13, macos-13-xlarge, macos-14-large, macos-14-xlarge, macos-15-large, macos-15-xlarge]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Install fio and iostat
+      run: |
+        # Install fio for I/O testing and iostat for disk stats
+        brew install fio
+      #  brew install sysstat
+
+    - name: Run sequential write test with fio
+      id: sequential_write
+      run: |
+        # Start the sequential write test with fio
+        echo "Running sequential write test..."
+    
+        # Run fio test and store output
+         fio_output=$(fio --name=seq_write_test --ioengine=sync --rw=write --bs=4k --size=1G --numjobs=1 --time_based --runtime=5m)
+
+        # Display the full output of fio
+        echo "$fio_output"
+
+        # Extract latency, IOPS, and bandwidth from the fio output
+        WRITE_LATENCY=$(echo "$fio_output" | grep 'lat (usec)' | tail -n 1 | awk '{print $6}')
+        WRITE_IOPS=$(echo "$fio_output" | grep 'IOPS' | tail -n 1 | awk '{print $2}')
+        WRITE_BW=$(echo "$fio_output" | grep 'bw=' | tail -n 1 | awk '{print $2}' | sed 's/.$//')  # Remove trailing 'B' for bandwidth
+
+        # Define thresholds for latency and IOPS
+        LATENCY_THRESHOLD=10  # 10ms threshold (in microseconds)
+        IOPS_THRESHOLD=5000   # 5000 IOPS threshold
+
+        # Output the extracted latency, IOPS, and bandwidth for reference
+        echo "Write Latency: $WRITE_LATENCY microseconds"
+        echo "Write IOPS: $WRITE_IOPS"
+        echo "Write Bandwidth: $WRITE_BW MiB/s"
+
+        # Check if latency exceeds the threshold
+        if (( WRITE_LATENCY > LATENCY_THRESHOLD )); then
+        echo "Error: Write latency exceeded threshold ($LATENCY_THRESHOLD ms) with $WRITE_LATENCY microseconds"
+        exit 1
+        fi
+
+        # Check if IOPS falls below the threshold
+        if (( WRITE_IOPS < IOPS_THRESHOLD )); then
+        echo "Error: Write IOPS fell below threshold ($IOPS_THRESHOLD IOPS) with $WRITE_IOPS IOPS"
+        exit 1
+        fi
+
+        # If all thresholds are met, confirm the performance is within limits
+        echo "✅ Sequential write performance is within acceptable limits. Latency: $WRITE_LATENCY microseconds, IOPS: $WRITE_IOPS, Bandwidth: $WRITE_BW MiB/s"
