@@ -1,0 +1,24 @@
+name: multiple device Simulators
+
+on: push
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'macos-14', 'macos-15']
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set Xcode version
+      run: |
+        echo "Setting Xcode version..."
+        sudo xcode-select -s /Applications/Xcode_16.2.app
+
+    - name: list of simulators
+      run: |
+        xcrun simctl list devices 
